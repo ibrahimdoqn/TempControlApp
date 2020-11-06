@@ -246,21 +246,49 @@ namespace TempControl
 
         }
         //Fan kontrol ve kritik sıcaklık bölümü
+        private byte tempTimerGpu = 0;
+        private byte tempTimerCpu = 0;
         private void TempControl()
         {
 
-            if ((usageGpu >= 70 && tempgpu > Convert.ToInt32(label10.Text)) || (usageGpu < 70 && tempgpu > Convert.ToInt32(label21.Text)))
+            if (usageGpu >= 60 && tempgpu > Convert.ToInt32(label10.Text))
             {
                 //Ekran kartı kritik sıcaklık
-                writeLog("Ekran kartı Max sıcaklık aşımı");
+                writeLog("Ekran kartı Sistem Yükte Max sıcaklık aşımı");
                 sleepMode();
             }
-            if ((cpuPower >= 90 && tempcpu.Max() > Convert.ToInt32(label11.Text)) || (cpuPower < 80 && tempcpu.Max() > Convert.ToInt32(label20.Text)))
+
+            else if (usageGpu < 60 && tempgpu > Convert.ToInt32(label21.Text))
+            {
+                tempTimerGpu++;
+                if(tempTimerGpu > 5)
+                {
+                    //Ekran kartı kritik sıcaklık
+                    writeLog("Ekran kartı Sistem Bosta Max sıcaklık aşımı");
+                    tempTimerGpu = 0;
+                    sleepMode();
+                }
+            }
+            else tempTimerGpu = 0;
+
+            if (cpuPower > 80 && tempcpu.Max() > Convert.ToInt32(label11.Text))
             {
                 //CPU kritik sıcaklık
-                writeLog("İşlemci Max Sıcaklık Aşımı");
+                writeLog("İşlemci Sistem Yükte Max Sıcaklık Aşımı");
                 sleepMode();
             }
+            else if (cpuPower < 80 && tempcpu.Max() > Convert.ToInt32(label20.Text))
+            {
+                tempTimerCpu++;
+                if (tempTimerCpu > 5)
+                {
+                    //CPU kritik sıcaklık
+                    writeLog("İşlemci Sistem Bosta Max Sıcaklık Aşımı");
+                    tempTimerCpu = 0;
+                    sleepMode();
+                }
+            }
+            else tempTimerCpu = 0;
 
         }
         //Uyku modu Fonksiyonu
