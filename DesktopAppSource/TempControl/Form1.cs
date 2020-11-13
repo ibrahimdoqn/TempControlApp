@@ -1,4 +1,5 @@
-﻿using Microsoft.Win32.TaskScheduler;
+﻿using Microsoft.Win32;
+using Microsoft.Win32.TaskScheduler;
 using OpenHardwareMonitor.Hardware;
 using System;
 using System.Collections.Generic;
@@ -23,6 +24,7 @@ namespace TempControl
             timer1.Start();
             timer2.Start();
             timer3.Start();
+            SystemEvents.PowerModeChanged += OnPowerChange;
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -128,6 +130,27 @@ namespace TempControl
             dataArray = new byte[] { bitis };//Bitiş
             sp.Write(dataArray, 0, 1);
 
+        }
+
+        //Uyku modu tespiti
+        private void OnPowerChange(object s, PowerModeChangedEventArgs e)
+        {
+            switch (e.Mode)
+            {
+                case PowerModes.Resume:
+                    {
+                        timer2.Start();
+                        timer3.Start();
+                    }
+                    break;
+                case PowerModes.Suspend:
+                    {
+                        timer3.Stop();
+                        sp.Close();
+                        spOpen = false;
+                    }
+                    break;
+            }
         }
 
         //Seriport bağlantısını açar
