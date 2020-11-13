@@ -20,6 +20,7 @@ namespace TempControl
             cpu.Open();
             gpu.Open();
             oku();
+            timer1.Start();
             timer2.Start();
             timer3.Start();
         }
@@ -75,7 +76,7 @@ namespace TempControl
         private byte CpuUsage = 0;
         private int dakika = 0;
         private int saat = 0;
-        private bool spOpen = false;
+        public bool spOpen = false;
 
 
 
@@ -86,8 +87,8 @@ namespace TempControl
         {
             HardwareMonitor();//Sıcaklık hesaplama
             MinMaxTemp();//Label'a sıcaklıkları yazdır
-            TempControl();//Fan Kontolü
-            fanControl();//Seriport ile kullanım değerini denetleyici kart'a gönderir
+            TempControl();//Sıcaklık Kontrolü / Pc kapatma
+            if (spOpen) fanControl();//Seriport ile kullanım değerini denetleyici kart'a gönderir
         }
 
         private void sp_DataReceived(object sender, SerialDataReceivedEventArgs e)
@@ -149,13 +150,11 @@ namespace TempControl
                     sp.Read(PWM, 0, sp.ReadBufferSize);
                     if (PWM[0].ToString() == "252")
                     {
-                        timer2.Stop();
                         spOpen = true;
                         boardConfig();
-                        timer1.Start();
                         label28.Text = portAdi + " Bağlandı";
-                        main.label2.Text = portAdi + " Bağlandı";
                         sp.DataReceived += new SerialDataReceivedEventHandler(sp_DataReceived);
+                        timer2.Stop();
                         break;
                     }
                 }
@@ -261,7 +260,7 @@ namespace TempControl
             else if (usageGpu < 60 && tempgpu > Convert.ToInt32(label21.Text))
             {
                 tempTimerGpu++;
-                if(tempTimerGpu > 5)
+                if (tempTimerGpu > 5)
                 {
                     //Ekran kartı kritik sıcaklık
                     writeLog("Ekran kartı Sistem Bosta Max sıcaklık aşımı");
@@ -354,8 +353,12 @@ namespace TempControl
                 label15.Text = minTempGpu.ToString() + " °C";
             }
             // Sıcaklık Bildirim
-            main.label3.Text = "CPU : " + tempcpu.Max().ToString() + " °C - " + (ClockCpu.Max()).ToString() + " MHz - %" + CpuUsage.ToString();
-            main.label4.Text = "GPU : " + tempgpu.ToString() + " °C - " + ClockGpu.ToString() + " MHz - %" + usageGpu.ToString();
+            main.label1.Text = "% " + CpuUsage.ToString();
+            main.label2.Text = tempcpu.Max().ToString() + " °C";
+            main.label3.Text = (ClockCpu.Max()).ToString() + " MHz";
+            main.label5.Text = tempgpu.ToString() + " °C";
+            main.label6.Text = "% " + usageGpu.ToString();
+            main.label7.Text = ClockGpu.ToString() + " MHz";
         }
 
         //Temp.data dosyasını okur ve formdaki yerlerine aktarır
@@ -613,30 +616,6 @@ namespace TempControl
             label24.Text = buttonDownUp(label24.Text, "+", 0, 255);
             yaz();
             boardConfig();
-        }
-
-        private void eXITToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Application.Exit();
-        }
-
-        private void dOGANSOFTWAREToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Show();
-        }
-
-        private void noConnectionToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (sp.IsOpen)
-            {
-                timer1.Stop();
-                sp.Close();
-                label28.Text = "No Connection";
-            }
-            else
-            {
-                timer2.Start();
-            }
         }
 
     }
