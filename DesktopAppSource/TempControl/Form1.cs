@@ -40,14 +40,19 @@ namespace TempControl
 
         private void boardConfig()
         {
-            byte[] dataArray = new byte[] { baslangic };
-            sp.Write(dataArray, 0, 1);
-            dataArray = new byte[] { Convert.ToByte(label24.Text) };//Timer
-            sp.Write(dataArray, 0, 1);
-            dataArray = new byte[] { Convert.ToByte(label25.Text) };//Temp
-            sp.Write(dataArray, 0, 1);
-            dataArray = new byte[] { 253 };
-            sp.Write(dataArray, 0, 1);
+            if (sp.IsOpen)
+            {
+                byte[] dataArray = new byte[] { baslangic };
+                sp.Write(dataArray, 0, 1);
+                dataArray = new byte[] { Convert.ToByte(label24.Text) };//Timer
+                sp.Write(dataArray, 0, 1);
+                dataArray = new byte[] { Convert.ToByte(label25.Text) };//Temp
+                sp.Write(dataArray, 0, 1);
+                dataArray = new byte[] { 253 };
+                sp.Write(dataArray, 0, 1);
+
+            }
+
         }
 
         //Tanımlamalar
@@ -68,6 +73,8 @@ namespace TempControl
         private int ClockGpu;
         private int cpuPower;
         private int maxCpuPower;
+        private int gpuMemoryClock;
+        private int gpuMemoryUsed;
         private byte[] PWM = new byte[1];
         private byte tempgpu = 0;
         private byte maxTempCpu = 0;
@@ -78,8 +85,7 @@ namespace TempControl
         private byte CpuUsage = 0;
         private int dakika = 0;
         private int saat = 0;
-        public bool spOpen = false;
-
+        bool spOpen = false;
 
 
         //
@@ -93,10 +99,114 @@ namespace TempControl
             if (spOpen) fanControl();//Seriport ile kullanım değerini denetleyici kart'a gönderir
         }
 
+        private void SerialButton(bool Switch)
+        {
+            if (Switch)
+            {
+                sp.Close();
+                label28.Text = "No Connection";
+                label12.Text = "Count : -";
+                spOpen = false;
+                button7.Text = "Connect";
+                button7.ForeColor = Color.Red;
+            }
+            else
+            {
+                timer2.Start();
+                button7.Text = "Disconnect";
+                button7.ForeColor = Color.GreenYellow;
+            }
+        }
+
+        private bool SpDataBegin = false;
+        private bool SpRoleCount = false;
+        private bool tempData = false;
         private void sp_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            label12.Text = "Count : " + sp.ReadLine();
+            if (!SpDataBegin)
+            {
+                PWM = new byte[1];
+                sp.Read(PWM, 0, 1);
+                if (PWM[0] == 204)
+                {
+                    tempData = true;
+                    SpDataBegin = true;
+                }
+                else if (PWM[0] == 202)
+                {
+                    label1.Text = "12V";
+                }
+                else if (PWM[0] == 203)
+                {
+                    label1.Text = "5V";
+                }
+
+                else if (PWM[0] == 201)
+                {
+                    SpDataBegin = true;
+                    SpRoleCount = true;
+                }
+                else if (PWM[0] == 205)
+                {
+                    turboMode(true);
+                }
+                else if (PWM[0] == 206)
+                {
+                    turboMode(false);
+                }
+                else if (PWM[0] == 200)
+                {
+                    boardConfig();
+                }
+
+            }
+            else
+            {
+
+                if (tempData)
+                {
+                    PWM = new byte[1];
+                    sp.Read(PWM, 0, 1);
+                    label2.Text = PWM[0].ToString() + " °C";
+                    SpDataBegin = false;
+                    tempData = false;
+                }
+                else if (SpRoleCount)
+                {
+                    string RoleCount = sp.ReadLine();
+                    if (RoleCount != "")
+                    {
+                        label12.Text = "Count : " + RoleCount;
+                        SpDataBegin = false;
+                        SpRoleCount = false;
+                    }
+                }
+            }
+
+
         }
+
+        private void turboMode(bool Switch)
+        {
+            if (sp.IsOpen)
+            {
+                if (Switch)
+                {
+                    byte[] dataArray = new byte[] { 251 };
+                    sp.Write(dataArray, 0, 1);
+                    button4.ForeColor = Color.GreenYellow;
+                    button5.ForeColor = Color.Red;
+                }
+                else
+                {
+                    byte[] dataArray = new byte[] { 250 };
+                    sp.Write(dataArray, 0, 1);
+                    button5.ForeColor = Color.GreenYellow;
+                    button4.ForeColor = Color.Red;
+                }
+            }
+        }
+
 
         private void timer3_Tick(object sender, EventArgs e)
         {
@@ -121,15 +231,17 @@ namespace TempControl
         private readonly byte bitis = 254;
         private void fanControl()
         {
-            byte[] dataArray = new byte[] { baslangic };//Başlangıç
-            sp.Write(dataArray, 0, 1);
-            dataArray = new byte[] { Convert.ToByte(tempcpu.Max()) };
-            sp.Write(dataArray, 0, 1);
-            dataArray = new byte[] { tempgpu };
-            sp.Write(dataArray, 0, 1);
-            dataArray = new byte[] { bitis };//Bitiş
-            sp.Write(dataArray, 0, 1);
-
+            if (sp.IsOpen)
+            {
+                byte[] dataArray = new byte[] { baslangic };//Başlangıç
+                sp.Write(dataArray, 0, 1);
+                dataArray = new byte[] { Convert.ToByte(tempcpu.Max()) };
+                sp.Write(dataArray, 0, 1);
+                dataArray = new byte[] { tempgpu };
+                sp.Write(dataArray, 0, 1);
+                dataArray = new byte[] { bitis };//Bitiş
+                sp.Write(dataArray, 0, 1);
+            }
         }
 
         //Uyku modu tespiti
@@ -147,7 +259,6 @@ namespace TempControl
                     {
                         timer3.Stop();
                         sp.Close();
-                        spOpen = false;
                     }
                     break;
             }
@@ -173,10 +284,12 @@ namespace TempControl
                     sp.Read(PWM, 0, sp.ReadBufferSize);
                     if (PWM[0].ToString() == "252")
                     {
-                        spOpen = true;
                         boardConfig();
                         label28.Text = portAdi + " Bağlandı";
                         sp.DataReceived += new SerialDataReceivedEventHandler(sp_DataReceived);
+                        button7.Text = "Disconnect";
+                        button7.ForeColor = Color.GreenYellow;
+                        spOpen = true;
                         timer2.Stop();
                         break;
                     }
@@ -254,12 +367,21 @@ namespace TempControl
                         {
                             ClockGpu = Convert.ToInt32(sensor.Value);
                         }
+                        else if (sensor.Name == "GPU Memory")
+                        {
+                            gpuMemoryClock = Convert.ToInt32(sensor.Value);
+                        }
+
                     }
                     else if (sensor.SensorType == SensorType.Load)
                     {
                         if (sensor.Name == "GPU Core")
                         {
                             usageGpu = Convert.ToInt32(sensor.Value);
+                        }
+                        else if (sensor.Name == "GPU Memory")
+                        {
+                            gpuMemoryUsed = Convert.ToInt32(sensor.Value);
                         }
                     }
 
@@ -324,57 +446,63 @@ namespace TempControl
         private void MinMaxTemp()
         {
             //Sıcaklıklar
-            label1.Text = tempcpu.Max().ToString() + " °C";
-            label2.Text = tempgpu.ToString() + " °C";
+            label35.Text = tempcpu.Max().ToString() + " °C";
+            label48.Text = tempgpu.ToString() + " °C";
 
             //Clock
             label9.Text = Convert.ToInt32(ClockCpu.Max()).ToString() + " MHz";
-            label13.Text = ClockGpu.ToString() + " MHz";
+            label49.Text = ClockGpu.ToString() + " MHz";
 
             //Load
-            label3.Text = "%" + CpuUsage.ToString();
-            label18.Text = "%" + usageGpu.ToString();
+            label36.Text = "%" + CpuUsage.ToString();
+            label47.Text = "%" + usageGpu.ToString();
 
             //Power
-            label19.Text = cpuPower.ToString() + " Watt";
+            label40.Text = cpuPower.ToString() + " Watt";
             if (cpuPower > maxCpuPower)
             {
                 maxCpuPower = cpuPower;
+                label41.Text = maxCpuPower.ToString() + " Watt";
             }
 
             //Max Load
             if (CpuUsage > maxCpuUsage)
             {
                 maxCpuUsage = CpuUsage;
-                label16.Text = "%" + CpuUsage.ToString();
+                label37.Text = "%" + CpuUsage.ToString();
             }
             if (usageGpu > maxUsageGpu)
             {
                 maxUsageGpu = usageGpu;
+                label46.Text = "%" + maxUsageGpu.ToString();
             }
 
             //Max sıcaklıklar
             if (maxTempCpu < tempcpu.Max())
             {
                 maxTempCpu = Convert.ToByte(tempcpu.Max());
-                label4.Text = maxTempCpu.ToString() + " °C";
+                label39.Text = maxTempCpu.ToString() + " °C";
             }
             if (maxTempGpu < tempgpu)
             {
                 maxTempGpu = tempgpu;
-                label5.Text = maxTempGpu.ToString() + " °C";
+                label44.Text = maxTempGpu.ToString() + " °C";
             }
             //Min Sıcaklıklar
             if (minTempCpu > tempcpu.Min())
             {
                 minTempCpu = Convert.ToByte(tempcpu.Min());
-                label14.Text = minTempCpu.ToString() + " °C";
+                label38.Text = minTempCpu.ToString() + " °C";
             }
             if (minTempGpu > tempgpu)
             {
                 minTempGpu = tempgpu;
-                label15.Text = minTempGpu.ToString() + " °C";
+                label45.Text = minTempGpu.ToString() + " °C";
             }
+            //GPU MEMORY
+            label42.Text = "% " + gpuMemoryUsed.ToString();
+            label43.Text = gpuMemoryClock.ToString() + " MHz";
+
             // Sıcaklık Bildirim
             main.label1.Text = "% " + CpuUsage.ToString();
             main.label2.Text = tempcpu.Max().ToString() + " °C";
@@ -517,6 +645,28 @@ namespace TempControl
             MessageBox.Show("Uygulama oturum açıldığında otomatik çalıştırılacak şekilde ayarlandı.");
         }
 
+        private void DrawGroupBox(GroupBox box, Graphics g, Color textColor, Color borderColor)
+        {
+            if (box != null)
+            {
+                Brush textBrush = new SolidBrush(textColor);
+                Brush borderBrush = new SolidBrush(borderColor);
+                Pen borderPen = new Pen(borderBrush);
+                SizeF strSize = g.MeasureString(box.Text, box.Font);
+                Rectangle rect = new Rectangle(box.ClientRectangle.X,
+                                               box.ClientRectangle.Y + (int)(strSize.Height / 2),
+                                               box.ClientRectangle.Width - 1,
+                                               box.ClientRectangle.Height - (int)(strSize.Height / 2) - 1);
+                g.Clear(this.BackColor);
+                g.DrawString(box.Text, box.Font, textBrush, box.Padding.Left, 0);
+                g.DrawLine(borderPen, rect.Location, new Point(rect.X, rect.Y + rect.Height));
+                g.DrawLine(borderPen, new Point(rect.X + rect.Width, rect.Y), new Point(rect.X + rect.Width, rect.Y + rect.Height));
+                g.DrawLine(borderPen, new Point(rect.X, rect.Y + rect.Height), new Point(rect.X + rect.Width, rect.Y + rect.Height));
+                g.DrawLine(borderPen, new Point(rect.X, rect.Y), new Point(rect.X + box.Padding.Left, rect.Y));
+                g.DrawLine(borderPen, new Point(rect.X + box.Padding.Left + (int)(strSize.Width), rect.Y), new Point(rect.X + rect.Width, rect.Y));
+            }
+        }
+
         private void button3_Click(object sender, EventArgs e)
         {
             writeLog("Kullanıcı isteği ile alınan kayıt");
@@ -641,5 +791,39 @@ namespace TempControl
             boardConfig();
         }
 
+        private void button4_Click(object sender, EventArgs e)
+        {
+            turboMode(true);
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            turboMode(false);
+        }
+
+        private void button7_Click(object sender, EventArgs e)
+        {
+            if (sp.IsOpen)
+            {
+                SerialButton(true);
+
+            }
+            else
+            {
+                SerialButton(false);
+            }
+        }
+
+        private void groupBoxMain_Paint(object sender, PaintEventArgs e)
+        {
+            GroupBox box = sender as GroupBox;
+            DrawGroupBox(box, e.Graphics, Color.White, Color.YellowGreen);
+        }
+
+        private void groupBoxControl_Paint(object sender, PaintEventArgs e)
+        {
+            GroupBox box = sender as GroupBox;
+            DrawGroupBox(box, e.Graphics, Color.White, Color.Red);
+        }
     }
 }

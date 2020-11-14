@@ -13,6 +13,7 @@ byte Time = 0;//Timer
 bool Config = false;//Yapılandırma kontrolü
 long roleCounts = 0;//Role geçiş sayısı
 bool roleSwitchMode = true;//Role'nin açık veya kapalı olduğunu hafıza'da tutar
+bool turboMode = false;
 
 void setupTimer(){
     cli();
@@ -48,6 +49,7 @@ void EEPROMWritelong(int address, long value) {
 void RomWrite(){
   roleCounts++;
   EEPROMWritelong(0, roleCounts);
+  Serial.write((byte)201);
   Serial.println(roleCounts);
 }
 
@@ -55,11 +57,13 @@ void roleCountswitch(bool Switch){
   if( Switch && !roleSwitchMode ){//Roleyi 12V konumuna ayarla
       digitalWrite(role, LOW);
       roleSwitchMode = true;
+      Serial.write((byte)202);
       RomWrite();
     }
     else if(!Switch && roleSwitchMode){//Roleyi 5V konumuna ayarla
       digitalWrite(role, HIGH);
       roleSwitchMode = false;
+      Serial.write((byte)203);
       RomWrite();
     }
 }
@@ -77,8 +81,8 @@ void setup()
 
 ISR(TIMER1_COMPA_vect){
   if(Time < 255){
-    if(Time > 1){
-      controlOff();//Eğer seriporttan 1 sn gecikme olursa değerleri sıfırla
+    if(Time > 2){
+      controlOff();//Eğer seriporttan 2 sn gecikme olursa değerleri sıfırla
     }
     Time++;
   }
@@ -97,8 +101,11 @@ void TempControl(){
     for(byte x = 0; x < listLenght; x++){
       if(CalculatedTemp < tempList[x]) CalculatedTemp = tempList[x];//Listedeki en büyük değeri bul
     }
+    Serial.write((byte)204);
+    Serial.write(CalculatedTemp);
+    
   //Control
-    if( CalculatedTemp > switchTemp ){//Roleyi 12V konumuna ayarla
+    if( CalculatedTemp > switchTemp || turboMode){//Roleyi 12V konumuna ayarla
       roleCountswitch(true);
     }
     else{//Roleyi 5V konumuna ayarla
@@ -123,6 +130,15 @@ void boardConfig(){//C# konfigürasyonunu ayarlar ve devir kontrolüne hazırlar
   listLenght = buf[0];
   switchTemp= buf[1];
   Config = true;
+  if(turboMode){
+    Serial.write((byte)205);
+  }
+  else{
+    Serial.write((byte)206);
+  }
+  Serial.write((byte)201);
+  Serial.println(roleCounts);
+  Serial.write((byte)202);
 }
 
 //Seriport değerler
@@ -132,13 +148,25 @@ void serialPort(){
     index = 0;
     }
   else if(b == 254){//Sıcaklık bilgisi geldi
-    if(Config) TempControl();
+    if(Config){
+      TempControl();
+    }
+    else{
+      Serial.write((byte)200);
+    }
+    
     }
   else if( b == 253){
     boardConfig();//Program yapılandırması geldiği iletir
   }
   else if( b == 252){
     Serial.write((byte)252);//Serialporttan gelen mesajı aldığını iletir ve bağlantıyı kurar.
+  }
+  else if( b == 251){
+    turboMode = true;
+  }
+  else if( b == 250){
+    turboMode = false;
   }
   else{//Paket gelmeye devam ediyor
     if(index < 16)buf[index] = b;

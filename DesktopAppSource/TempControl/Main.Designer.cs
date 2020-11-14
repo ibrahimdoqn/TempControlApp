@@ -76,12 +76,12 @@
             // button1
             // 
             this.button1.BackColor = System.Drawing.Color.Transparent;
-            this.button1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.button1.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.button1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(162)));
             this.button1.ForeColor = System.Drawing.Color.Red;
-            this.button1.Location = new System.Drawing.Point(170, 73);
+            this.button1.Location = new System.Drawing.Point(104, 73);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(62, 24);
+            this.button1.Size = new System.Drawing.Size(67, 24);
             this.button1.TabIndex = 4;
             this.button1.Text = "Hide";
             this.button1.UseVisualStyleBackColor = false;
@@ -90,12 +90,12 @@
             // button2
             // 
             this.button2.BackColor = System.Drawing.Color.Transparent;
-            this.button2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.button2.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.button2.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(162)));
             this.button2.ForeColor = System.Drawing.Color.Red;
-            this.button2.Location = new System.Drawing.Point(72, 73);
+            this.button2.Location = new System.Drawing.Point(5, 73);
             this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(92, 24);
+            this.button2.Size = new System.Drawing.Size(94, 24);
             this.button2.TabIndex = 5;
             this.button2.Text = "Settings";
             this.button2.UseVisualStyleBackColor = false;
@@ -104,12 +104,12 @@
             // button3
             // 
             this.button3.BackColor = System.Drawing.Color.Transparent;
-            this.button3.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.button3.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.button3.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(162)));
             this.button3.ForeColor = System.Drawing.Color.Red;
-            this.button3.Location = new System.Drawing.Point(4, 73);
+            this.button3.Location = new System.Drawing.Point(177, 73);
             this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(62, 24);
+            this.button3.Size = new System.Drawing.Size(55, 24);
             this.button3.TabIndex = 6;
             this.button3.Text = "Exit";
             this.button3.UseVisualStyleBackColor = false;
@@ -264,7 +264,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.BackColor = System.Drawing.Color.Black;
             this.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.ClientSize = new System.Drawing.Size(237, 101);
+            this.ClientSize = new System.Drawing.Size(238, 102);
             this.ControlBox = false;
             this.Controls.Add(this.groupBox4);
             this.Controls.Add(this.groupBox3);
