@@ -1,19 +1,18 @@
 #include <EEPROM.h>
 //Setup Array
-byte listLenght = 30;//Sıcaklık listesinin uzunluğu(Kontrol edilen).
-//Setup Temp
-byte switchTemp = 60;//12V'a geçiş sıcaklığı
-//Global
+int millisTimer;//Sıcaklık listesinin uzunluğu(Kontrol edilen).
+byte switchTemp;//12V'a geçiş sıcaklığı
 byte role=5;//Role pin
 byte index;//Serial port data index'i
 byte buf[4];//Serial port data buffer
-byte tempList[255];//Sıcaklık listesi
-byte tempIndex = 0;//Sıcaklık listesi için tutulan yazma index'i
 byte Time = 0;//Timer
 bool Config = false;//Yapılandırma kontrolü
-long roleCounts = 0;//Role geçiş sayısı
 bool roleSwitchMode = true;//Role'nin açık veya kapalı olduğunu hafıza'da tutar
 bool turboMode = false;
+long roleCounts = 0;//Role geçiş sayısı
+unsigned long highTime;
+unsigned long lowTime;
+
 
 void setupTimer(){
     cli();
@@ -49,22 +48,30 @@ void EEPROMWritelong(int address, long value) {
 void RomWrite(){
   roleCounts++;
   EEPROMWritelong(0, roleCounts);
-  Serial.write((byte)201);
-  Serial.println(roleCounts);
+  if(Config){
+    Serial.write((byte)201);
+    Serial.println(roleCounts);
+    }
 }
 
 void roleCountswitch(bool Switch){
   if( Switch && !roleSwitchMode ){//Roleyi 12V konumuna ayarla
-      digitalWrite(role, LOW);
-      roleSwitchMode = true;
-      Serial.write((byte)202);
-      RomWrite();
+      highTime = millis();
+      if( (highTime - lowTime) > 2500){
+        digitalWrite(role, LOW);
+        roleSwitchMode = true;
+        Serial.write((byte)202);
+        RomWrite();
+      }
     }
     else if(!Switch && roleSwitchMode){//Roleyi 5V konumuna ayarla
-      digitalWrite(role, HIGH);
-      roleSwitchMode = false;
-      Serial.write((byte)203);
-      RomWrite();
+      lowTime = millis();
+      if( (lowTime - highTime) > millisTimer ){
+        digitalWrite(role, HIGH);
+        roleSwitchMode = false;
+        Serial.write((byte)203);
+        RomWrite();
+        }
     }
 }
 
@@ -74,14 +81,11 @@ void setup()
   Serial.begin(19200); 
   setupTimer();
   pinMode(role, OUTPUT);
-    for(byte x = 0; x < 255; x++){
-      tempList[x] = 0;
-    }
 } 
 
 ISR(TIMER1_COMPA_vect){
   if(Time < 255){
-    if(Time > 2){
+    if(Time > 5 && Config){
       controlOff();//Eğer seriporttan 2 sn gecikme olursa değerleri sıfırla
     }
     Time++;
@@ -94,12 +98,6 @@ void TempControl(){
   //Calculate
     for (byte x = 0; x < 2; x++){
       if(CalculatedTemp < buf[x]) CalculatedTemp = buf[x]; //Buffer'dan yüksek sıcaklığı bul
-    }
-    tempList[tempIndex] = CalculatedTemp;//Sıcaklık listesine ekle
-    tempIndex++;//Index'i artır
-    if(tempIndex >= listLenght) tempIndex = 0;//Config'de belirlenen değere ulaşınca Index'i sıfırla
-    for(byte x = 0; x < listLenght; x++){
-      if(CalculatedTemp < tempList[x]) CalculatedTemp = tempList[x];//Listedeki en büyük değeri bul
     }
     Serial.write((byte)204);
     Serial.write(CalculatedTemp);
@@ -114,20 +112,17 @@ void TempControl(){
 }
 
 void controlOff(){//Değerleri sıfırlar
-  roleCountswitch(true);//Roleyi 12V'a ayarla
-  for(byte x = 0; x < 255; x++){
-      tempList[x] = 0;//Listeyi sıfırla
-    }
   Config = false;
-  tempIndex = 0;
+  digitalWrite(role, LOW);
+  roleSwitchMode = true;
+  RomWrite();
   index = 0;
 }
 
 //BoardConfig
 void boardConfig(){//C# konfigürasyonunu ayarlar ve devir kontrolüne hazırlar.
-  tempIndex = 0;
   index = 0;
-  listLenght = buf[0];
+  millisTimer = (buf[0] * 1000);
   switchTemp= buf[1];
   if(turboMode){
     Serial.write((byte)205);
@@ -138,6 +133,8 @@ void boardConfig(){//C# konfigürasyonunu ayarlar ve devir kontrolüne hazırlar
   Serial.write((byte)201);
   Serial.println(roleCounts);
   Serial.write((byte)202);
+  highTime = millis();
+  lowTime = millis();
   Config = true;
 }
 

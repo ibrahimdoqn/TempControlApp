@@ -34,7 +34,6 @@ namespace TempControl
 
         private void timer2_Tick(object sender, EventArgs e)
         {
-            timer2.Interval = 1000;
             serialCOM();
         }
 

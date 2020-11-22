@@ -649,7 +649,7 @@
             // 
             // timer2
             // 
-            this.timer2.Interval = 10000;
+            this.timer2.Interval = 1000;
             this.timer2.Tick += new System.EventHandler(this.timer2_Tick);
             // 
             // groupBox16
