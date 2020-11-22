@@ -6,7 +6,7 @@ byte switchTemp = 60;//12V'a geçiş sıcaklığı
 //Global
 byte role=5;//Role pin
 byte index;//Serial port data index'i
-byte buf[16];//Serial port data buffer
+byte buf[4];//Serial port data buffer
 byte tempList[255];//Sıcaklık listesi
 byte tempIndex = 0;//Sıcaklık listesi için tutulan yazma index'i
 byte Time = 0;//Timer
@@ -71,7 +71,7 @@ void roleCountswitch(bool Switch){
 void setup() 
 { 
   roleCounts = EEPROMReadlong(0);
-  Serial.begin(9600); 
+  Serial.begin(19200); 
   setupTimer();
   pinMode(role, OUTPUT);
     for(byte x = 0; x < 255; x++){
@@ -129,7 +129,6 @@ void boardConfig(){//C# konfigürasyonunu ayarlar ve devir kontrolüne hazırlar
   index = 0;
   listLenght = buf[0];
   switchTemp= buf[1];
-  Config = true;
   if(turboMode){
     Serial.write((byte)205);
   }
@@ -139,6 +138,7 @@ void boardConfig(){//C# konfigürasyonunu ayarlar ve devir kontrolüne hazırlar
   Serial.write((byte)201);
   Serial.println(roleCounts);
   Serial.write((byte)202);
+  Config = true;
 }
 
 //Seriport değerler
@@ -169,7 +169,7 @@ void serialPort(){
     turboMode = false;
   }
   else{//Paket gelmeye devam ediyor
-    if(index < 16)buf[index] = b;
+    if(index < 4)buf[index] = b;
     index++;
     }
 }

@@ -272,7 +272,7 @@ namespace TempControl
             {
                 try
                 {
-                    sp = new SerialPort(portAdi, 9600, Parity.None, 8, StopBits.One)
+                    sp = new SerialPort(portAdi, 19200, Parity.None, 8, StopBits.One)
                     {
                         ReadTimeout = 1000,
                         WriteTimeout = 1000
@@ -280,9 +280,9 @@ namespace TempControl
                     sp.Open();
                     byte[] dataArray = new byte[] { 252 };
                     sp.Write(dataArray, 0, 1);
-                    PWM = new byte[sp.ReadBufferSize];
-                    sp.Read(PWM, 0, sp.ReadBufferSize);
-                    if (PWM[0].ToString() == "252")
+                    PWM = new byte[1];
+                    sp.Read(PWM, 0, 1);
+                    if (PWM[0] == 252)
                     {
                         boardConfig();
                         label28.Text = portAdi + " Bağlandı";
@@ -454,8 +454,8 @@ namespace TempControl
             label49.Text = ClockGpu.ToString() + " MHz";
 
             //Load
-            label36.Text = "%" + CpuUsage.ToString();
-            label47.Text = "%" + usageGpu.ToString();
+            label36.Text = "% " + CpuUsage.ToString();
+            label47.Text = "% " + usageGpu.ToString();
 
             //Power
             label40.Text = cpuPower.ToString() + " Watt";
@@ -469,16 +469,16 @@ namespace TempControl
             if (CpuUsage > maxCpuUsage)
             {
                 maxCpuUsage = CpuUsage;
-                label37.Text = "%" + CpuUsage.ToString();
+                label37.Text = "% " + CpuUsage.ToString();
             }
             if (usageGpu > maxUsageGpu)
             {
                 maxUsageGpu = usageGpu;
-                label46.Text = "%" + maxUsageGpu.ToString();
+                label46.Text = "% " + maxUsageGpu.ToString();
             }
 
             //Max sıcaklıklar
-            if (maxTempCpu < tempcpu.Max())
+            if (maxTempCpu < tempcpu.Max() && tempcpu.Max() < 500)
             {
                 maxTempCpu = Convert.ToByte(tempcpu.Max());
                 label39.Text = maxTempCpu.ToString() + " °C";
