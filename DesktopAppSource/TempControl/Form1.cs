@@ -20,7 +20,6 @@ namespace TempControl
             InitializeComponent();
             cpu.Open();
             gpu.Open();
-            oku();
             timer1.Start();
             timer2.Start();
             timer3.Start();
@@ -41,15 +40,8 @@ namespace TempControl
         {
             if (sp.IsOpen)
             {
-                byte[] dataArray = new byte[] { baslangic };
+                byte[] dataArray = new byte[] { 253 };
                 sp.Write(dataArray, 0, 1);
-                dataArray = new byte[] { Convert.ToByte(label24.Text) };//Timer
-                sp.Write(dataArray, 0, 1);
-                dataArray = new byte[] { Convert.ToByte(label25.Text) };//Temp
-                sp.Write(dataArray, 0, 1);
-                dataArray = new byte[] { 253 };
-                sp.Write(dataArray, 0, 1);
-
             }
 
         }
@@ -74,7 +66,6 @@ namespace TempControl
         private int maxCpuPower;
         private int gpuMemoryClock;
         private int gpuMemoryUsed;
-        private byte[] PWM = new byte[1];
         private byte tempgpu = 0;
         private byte maxTempCpu = 0;
         private byte maxTempGpu = 0;
@@ -120,68 +111,65 @@ namespace TempControl
         private bool SpDataBegin = false;
         private bool SpRoleCount = false;
         private bool tempData = false;
+        private bool confData = false;
         private void sp_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            if (!SpDataBegin)
+            if (!sp.IsOpen) return;
+            while (sp.BytesToRead > 1)
             {
-                PWM = new byte[1];
-                sp.Read(PWM, 0, 1);
-                if (PWM[0] == 204)
+                if (!SpDataBegin)
                 {
-                    tempData = true;
-                    SpDataBegin = true;
-                }
-                else if (PWM[0] == 202)
-                {
-                    label1.Text = "12V";
-                }
-                else if (PWM[0] == 203)
-                {
-                    label1.Text = "5V";
-                }
-
-                else if (PWM[0] == 201)
-                {
-                    SpDataBegin = true;
-                    SpRoleCount = true;
-                }
-                else if (PWM[0] == 205)
-                {
-                    turboMode(true);
-                }
-                else if (PWM[0] == 206)
-                {
-                    turboMode(false);
-                }
-                else if (PWM[0] == 200)
-                {
-                    boardConfig();
-                }
-
-            }
-            else
-            {
-
-                if (tempData)
-                {
-                    PWM = new byte[1];
-                    sp.Read(PWM, 0, 1);
-                    label2.Text = PWM[0].ToString() + " °C";
-                    SpDataBegin = false;
-                    tempData = false;
-                }
-                else if (SpRoleCount)
-                {
-                    string RoleCount = sp.ReadLine();
-                    if (RoleCount != "")
+                    int okunan = sp.ReadByte();
+                    switch (okunan)
                     {
-                        label12.Text = "Count : " + RoleCount;
+                        case 208: { SpDataBegin = true; tempData = true; } break;
+                        case 202: label1.Text = "12 V"; break;
+                        case 203: label1.Text = "5 V"; break;
+                        case 201: { SpDataBegin = true; SpRoleCount = true; } break;
+                        case 205: turboMode(true); break;
+                        case 206: turboMode(false); break;
+                        case 200: boardConfig(); break;
+                        case 207: { SpDataBegin = true; confData = true; } break;
+                        default: break;
+                    }
+                }
+                else
+                {
+
+                    if (tempData)
+                    {
+                        int okunan = sp.ReadByte();
+                        label2.Text = okunan.ToString() + " °C";
                         SpDataBegin = false;
-                        SpRoleCount = false;
+                        tempData = false;
+                    }
+                    else if (SpRoleCount)
+                    {
+                        string RoleCount = sp.ReadLine();
+                        if (RoleCount != "")
+                        {
+                            label12.Text = "Count : " + RoleCount;
+                            SpDataBegin = false;
+                            SpRoleCount = false;
+                        }
+                    }
+                    else if (confData)
+                    {
+                        byte[] SerialDataBuffer = new byte[6];
+                        sp.Read(SerialDataBuffer, 0, 6);
+                        label24.Text = SerialDataBuffer[0].ToString();
+                        label25.Text = SerialDataBuffer[1].ToString();
+                        label20.Text = SerialDataBuffer[2].ToString();
+                        label21.Text = SerialDataBuffer[3].ToString();
+                        label11.Text = SerialDataBuffer[4].ToString();
+                        label10.Text = SerialDataBuffer[5].ToString();
+                        SpDataBegin = false;
+                        confData = false;
+                        byte[] dataArray = new byte[] { 248 };
+                        sp.Write(dataArray, 0, 1);
                     }
                 }
             }
-
 
         }
 
@@ -225,21 +213,14 @@ namespace TempControl
         //
 
         //Fonksiyonlar
+
         //Fan Control
-        private readonly byte baslangic = 255;
-        private readonly byte bitis = 254;
         private void fanControl()
         {
             if (sp.IsOpen)
             {
-                byte[] dataArray = new byte[] { baslangic };//Başlangıç
-                sp.Write(dataArray, 0, 1);
-                dataArray = new byte[] { Convert.ToByte(tempcpu.Max()) };
-                sp.Write(dataArray, 0, 1);
-                dataArray = new byte[] { tempgpu };
-                sp.Write(dataArray, 0, 1);
-                dataArray = new byte[] { bitis };//Bitiş
-                sp.Write(dataArray, 0, 1);
+                byte[] dataArray = new byte[] { 255, Convert.ToByte(tempcpu.Max()), tempgpu, 254 };
+                sp.Write(dataArray, 0, 4);
             }
         }
 
@@ -257,6 +238,7 @@ namespace TempControl
                 case PowerModes.Suspend:
                     {
                         timer3.Stop();
+                        spOpen = false;
                         sp.Close();
                     }
                     break;
@@ -271,21 +253,22 @@ namespace TempControl
             {
                 try
                 {
-                    sp = new SerialPort(portAdi, 19200, Parity.None, 8, StopBits.One)
+                    sp = new SerialPort(portAdi, 19200, Parity.Odd, 8, StopBits.One)
                     {
                         ReadTimeout = 1000,
                         WriteTimeout = 1000
+
                     };
                     sp.Open();
-                    byte[] dataArray = new byte[] { 252 };
-                    sp.Write(dataArray, 0, 1);
-                    PWM = new byte[1];
-                    sp.Read(PWM, 0, 1);
-                    if (PWM[0] == 252)
+                    byte[] SerialDataBuffer = new byte[] { 252 };
+                    sp.Write(SerialDataBuffer, 0, 1);
+                    SerialDataBuffer = new byte[1];
+                    sp.Read(SerialDataBuffer, 0, 1);
+                    if (SerialDataBuffer[0] == 252)
                     {
-                        boardConfig();
                         label28.Text = portAdi + " Bağlandı";
                         sp.DataReceived += new SerialDataReceivedEventHandler(sp_DataReceived);
+                        boardConfig();
                         button7.Text = "Disconnect";
                         button7.ForeColor = Color.GreenYellow;
                         spOpen = true;
@@ -297,6 +280,7 @@ namespace TempControl
                 {
                     if (sp.IsOpen)
                     {
+                        spOpen = false;
                         sp.Close();
                     }
                 }
@@ -511,41 +495,11 @@ namespace TempControl
             main.label7.Text = ClockGpu.ToString() + " MHz";
         }
 
-        //Temp.data dosyasını okur ve formdaki yerlerine aktarır
-        private void oku()
-        {
-            try
-            {
-                StreamReader Oku = new StreamReader("Temp.data");
-                string number = Oku.ReadLine();
-                Oku.Close();
-                string[] numberList;
-                numberList = number.Split(';');
-                label20.Text = numberList[0];
-                label21.Text = numberList[1];
-                label10.Text = numberList[2];
-                label11.Text = numberList[3];
-                label24.Text = numberList[4];
-                label25.Text = numberList[5];
-            }
-
-            catch
-            {
-                yaz();
-            }
-
-        }
-        //Formdaki veriler değiştirildiğinde Temp.data dosyasına değişiklikleri işler
+        //Formdaki veriler değiştirildiğinde Board hafızasına kayıt eder
         private void yaz()
         {
-            StreamWriter Yaz = new StreamWriter("Temp.data");
-            Yaz.Write(label20.Text + ";");
-            Yaz.Write(label21.Text + ";");
-            Yaz.Write(label10.Text + ";");
-            Yaz.Write(label11.Text + ";");
-            Yaz.Write(label24.Text + ";");
-            Yaz.Write(label25.Text + ";");
-            Yaz.Close();
+            byte[] dataArray = new byte[] { 255, Convert.ToByte(label24.Text), Convert.ToByte(label25.Text), Convert.ToByte(label20.Text), Convert.ToByte(label21.Text), Convert.ToByte(label11.Text), Convert.ToByte(label10.Text), 249 };
+            sp.Write(dataArray, 0, 8);
         }
 
         //Log bölümü
@@ -766,28 +720,24 @@ namespace TempControl
         {
             label25.Text = buttonDownUp(label25.Text, "+", 30, 62);
             yaz();
-            boardConfig();
         }
 
         private void pictureBox10_Click(object sender, EventArgs e)
         {
             label25.Text = buttonDownUp(label25.Text, "-", 30, 62);
             yaz();
-            boardConfig();
         }
 
         private void pictureBox9_Click(object sender, EventArgs e)
         {
             label24.Text = buttonDownUp(label24.Text, "-", 0, 255);
             yaz();
-            boardConfig();
         }
 
         private void pictureBox11_Click(object sender, EventArgs e)
         {
             label24.Text = buttonDownUp(label24.Text, "+", 0, 255);
             yaz();
-            boardConfig();
         }
 
         private void button4_Click(object sender, EventArgs e)
@@ -824,5 +774,6 @@ namespace TempControl
             GroupBox box = sender as GroupBox;
             DrawGroupBox(box, e.Graphics, Color.White, Color.Red);
         }
+
     }
 }
