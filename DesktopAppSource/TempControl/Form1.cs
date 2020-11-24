@@ -95,7 +95,7 @@ namespace TempControl
             {
                 sp.Close();
                 label28.Text = "No Connection";
-                label12.Text = "Count : -";
+                label12.Text = "Temp : -";
                 spOpen = false;
                 button7.Text = "Connect";
                 button7.ForeColor = Color.Red;
@@ -123,13 +123,14 @@ namespace TempControl
                     switch (okunan)
                     {
                         case 208: { SpDataBegin = true; tempData = true; } break;
-                        case 202: label1.Text = "12 V"; break;
-                        case 203: label1.Text = "5 V"; break;
-                        case 201: { SpDataBegin = true; SpRoleCount = true; } break;
+                        case 207: { SpDataBegin = true; confData = true; } break;
+                        case 202: label2.Text = "12 V"; break;
+                        case 203: label2.Text = "5 V"; break;
+                        case 210: label1.Text = "12 V"; break;
+                        case 211: label1.Text = "5 V"; break;
                         case 205: turboMode(true); break;
                         case 206: turboMode(false); break;
                         case 200: boardConfig(); break;
-                        case 207: { SpDataBegin = true; confData = true; } break;
                         default: break;
                     }
                 }
@@ -139,19 +140,9 @@ namespace TempControl
                     if (tempData)
                     {
                         int okunan = sp.ReadByte();
-                        label2.Text = okunan.ToString() + " °C";
+                        label12.Text ="Temp : " + okunan.ToString() + " °C";
                         SpDataBegin = false;
                         tempData = false;
-                    }
-                    else if (SpRoleCount)
-                    {
-                        string RoleCount = sp.ReadLine();
-                        if (RoleCount != "")
-                        {
-                            label12.Text = "Count : " + RoleCount;
-                            SpDataBegin = false;
-                            SpRoleCount = false;
-                        }
                     }
                     else if (confData)
                     {

@@ -201,7 +201,7 @@
             this.groupBox3.Size = new System.Drawing.Size(133, 39);
             this.groupBox3.TabIndex = 14;
             this.groupBox3.TabStop = false;
-            this.groupBox3.Text = "Temp";
+            this.groupBox3.Text = "FAN";
             this.groupBox3.Paint += new System.Windows.Forms.PaintEventHandler(this.groupBoxMain_Paint);
             // 
             // label2
@@ -224,7 +224,7 @@
             this.groupBox2.Size = new System.Drawing.Size(133, 39);
             this.groupBox2.TabIndex = 13;
             this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "Voltage";
+            this.groupBox2.Text = "PUMP";
             this.groupBox2.Paint += new System.Windows.Forms.PaintEventHandler(this.groupBoxMain_Paint);
             // 
             // label1
@@ -512,7 +512,6 @@
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(125, 13);
             this.label12.TabIndex = 1;
-            this.label12.Text = "Count : -";
             this.label12.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // groupBox11

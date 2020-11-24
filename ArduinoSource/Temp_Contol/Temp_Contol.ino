@@ -18,10 +18,6 @@ unsigned long highTime1;
 unsigned long lowTime1;
 unsigned long highTime2;
 unsigned long lowTime2;
-//Relay State
-bool pumpSwitchMode = false;//Relay'nin açık veya kapalı olduğunu hafıza'da tutar
-bool RelaySwitchMode = true;//Relay'nin açık veya kapalı olduğunu hafıza'da tutar
-long RelayCounts = 0;//Relay geçiş sayısı
 //BoardConfig
 bool Config = false;//Yapılandırma kontrolü
 bool turboMode = false;
@@ -36,25 +32,6 @@ void setupTimer(){
     TCCR1B |= (1 << CS12) | (1 << CS10);  
     TIMSK1 |= (1 << OCIE1A);
     sei();
-}
-
-long EEPROMReadlong(long address) {
-  long four = EEPROM.read(address);
-  long three = EEPROM.read(address + 1);
-  long two = EEPROM.read(address + 2);
-  long one = EEPROM.read(address + 3);
-  return ((four << 0) & 0xFF) + ((three << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) + ((one << 24) & 0xFFFFFFFF);
-}
-
-void EEPROMWritelong(int address, long value) {
-  byte four = (value & 0xFF);
-  byte three = ((value >> 8) & 0xFF);
-  byte two = ((value >> 16) & 0xFF);
-  byte one = ((value >> 24) & 0xFF);
-  EEPROM.write(address, four);
-  EEPROM.write(address + 1, three);
-  EEPROM.write(address + 2, two);
-  EEPROM.write(address + 3, one);
 }
 
 void boardWrite(){
@@ -73,7 +50,6 @@ void boardWrite(){
 }
 
 void boardRead(){
-  RelayCounts = EEPROMReadlong(0);
   millisTimer = EEPROM.read(4);
   switchTemp = EEPROM.read(5);
   minTempCpu = EEPROM.read(6);
@@ -82,26 +58,19 @@ void boardRead(){
   maxTempGpu = EEPROM.read(9);
 }
 
-void RomWrite(){
-  RelayCounts++;
-  Serial.write((byte)201);
-  Serial.println(RelayCounts);
-  EEPROMWritelong(0, RelayCounts);
-}
-
 void pumpSwitch(bool Switch){
   if( Switch ){//Relayyi 12V konumuna ayarla
       highTime1 = millis();
-      if( ((highTime1 - lowTime1) > 3000) && !pumpSwitchMode ){
+      if((highTime1 - lowTime1) > 3000 ){
         digitalWrite(Pump, LOW);
-        pumpSwitchMode = true;
+        Serial.write((byte)210);
       }
     }
     else{//Relayyi 5V konumuna ayarla
       lowTime1 = millis();
-      if( ((lowTime1 - highTime1) > (millisTimer * 1000)) && pumpSwitchMode ){
+      if( (lowTime1 - highTime1) > (millisTimer * 1000) ){
         digitalWrite(Pump, HIGH);
-        pumpSwitchMode = false;
+        Serial.write((byte)211);
         }
     }
 }
@@ -109,18 +78,16 @@ void pumpSwitch(bool Switch){
 void RelayCountSwitch(bool Switch){
   if( Switch ){//Relayyi 12V konumuna ayarla
       highTime2 = millis();
-      if( ((highTime2 - lowTime2) > 3000) && !RelaySwitchMode ){
+      if( (highTime2 - lowTime2) > 3000 ){
         digitalWrite(Relay, LOW);
-        RelaySwitchMode = true;
-        RomWrite();
+        Serial.write((byte)202);
       }
     }
     else{//Relayyi 5V konumuna ayarla
       lowTime2 = millis();
-      if( ((lowTime2 - highTime2) > (millisTimer * 1000)) && RelaySwitchMode ){
+      if( (lowTime2 - highTime2) > (millisTimer * 1000)){
         digitalWrite(Relay, HIGH);
-        RelaySwitchMode = false;
-        RomWrite();
+        Serial.write((byte)203);
         }
     }
 }
@@ -175,7 +142,6 @@ void controlOff(){//Değerleri sıfırlar
   Config = false;
   digitalWrite(Pump, HIGH);
   digitalWrite(Relay, LOW);
-  RomWrite();
   index = 0;
 }
 
@@ -195,15 +161,16 @@ void boardConfig(){//C# konfigürasyonunu ayarlar ve devir kontrolüne hazırlar
   Serial.write(minTempGpu);
   Serial.write(maxTempCpu);
   Serial.write(maxTempGpu);
+  //TURBO MODE
   if(turboMode){
     Serial.write((byte)205);
   }
   else{
     Serial.write((byte)206);
   }
-  Serial.write((byte)201);
-  Serial.println(RelayCounts);
-  Serial.write((byte)202);
+  //
+  Serial.write((byte)202);//FAN 12V
+  Serial.write((byte)211);//PUMP 5V
 }
 
 //Seriport değerler
